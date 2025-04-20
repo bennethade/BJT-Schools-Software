@@ -945,16 +945,18 @@ class ExaminationsController extends Controller
             $dataE['exam_name'] = $value->exam_name;
             $dataE['exam_id'] = $value->exam_id;
             $dataE['exam_session'] = $value->exam_session;
+            $dataE['exam_class'] = $value->class_name;   ///ME
             
             $getExamSubject = MarksRegister::getExamSubject($value->exam_id, Auth::user()->id);
 
             $dataSubject = array();
             foreach($getExamSubject as $exam)
             {
-                $total_score                = $exam['ca'] + $exam['exam'];
+                $total_score                = $exam['ca'] + $exam['project'] + $exam['exam'];
                 $dataS                      = array();
                 $dataS['subject_name']      = $exam['subject_name'];
-                $dataS['ca']               = $exam['ca'];
+                $dataS['ca']                = $exam['ca'];
+                $dataS['project']           = $exam['project'];
                 $dataS['exam']              = $exam['exam'];
                 $dataS['total_score']       = $total_score;
                 $dataS['full_mark']         = $exam['full_mark'];
@@ -971,6 +973,8 @@ class ExaminationsController extends Controller
             
 
         $student = AssignStudent::where('student_id', Auth::user()->id)->where('lock_student', 0)->first();
+
+        // $data['getSingleExamName'] = Exam::getSingleExamName($value->exam_id);
 
         
         if($student)
@@ -1460,7 +1464,7 @@ class ExaminationsController extends Controller
                 $subjectResult['weighted_average'] = round(($firstTotal + $secondTotal + $thirdTotal) / $termCount, 2);
             }
 
-            $results[] = $subjectResult; // ✅ Corrected line
+            $results[] = $subjectResult; 
         }
 
         // Assign to view
@@ -1496,27 +1500,11 @@ class ExaminationsController extends Controller
         $data['getBehaviorChart'] = BehaviorChart::where('student_id', $request->student_id)->where('exam_id', $request->exam_id)->get();
 
 
-
-        // $user = User::find($request->student_id);
-        // if ($user) {
-        //     $dateOfBirth = $user->date_of_birth; 
-
-        //     $diff = strtotime('now') - strtotime($dateOfBirth);
-            
-        //     $age = floor($diff / (60 * 60 * 24 * 365.25));
-        //     $data['integerAge']  = (int)$age;
-
-        // } 
-        // else 
-        // {
-        //     '';
-        // }
-
-
         $data['integerAge'] = User::birthdayCalculation($request->student_id);
 
 
         $data['getExam'] = Exam::getSingle($request->exam_id);
+
         $data['getStudent'] = User::getSingle($request->student_id);
 
         $data['getClass'] = MarksRegister::getClass($request->exam_id, $request->student_id);
@@ -1526,7 +1514,7 @@ class ExaminationsController extends Controller
 
         $data['getClassTeacher'] = AssignClassTeacher::fetchClassTeacher($data['getClass']->class_id, $request->exam_id, $request->student_id);
 
-        $data['getHeadTeacher'] = User::where('user_type', 'Principal')->orWhere('user_type', 'Head Teacher')->first();
+        $data['getHeadTeacher'] = User::where('user_type', 'Principal')->orWhere('user_type', 'Head Teacher')->orWhere('user_type', 'School Admin')->first();
 
         $data['classAverage'] = MarksRegister::classAverage($data['getClass']->class_id, $request->exam_id);
 

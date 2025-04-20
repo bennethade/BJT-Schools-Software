@@ -20,8 +20,12 @@ return new class extends Migration
             $table->dateTime('start_time')->nullable();
             $table->dateTime('end_time')->nullable();
 
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('updated_by')->references('id')->on('users')->onDelete('set null');
+             // Add the columns first
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by')->nullable();
+
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('updated_by')->references('id')->on('users')->onDelete('cascade');
             
             // $table->enum('status', ['pending', 'active', 'completed'])->default('pending');
             $table->boolean('status');

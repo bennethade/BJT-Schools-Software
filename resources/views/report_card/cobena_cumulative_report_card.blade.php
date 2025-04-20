@@ -36,13 +36,13 @@
 
         .th {
             border: 1px solid #000;
-            padding: 12px;
+            padding: 10px;
             /* padding: 0px; */
         }
 
         .td {
             border: 1px solid #000;
-            padding: 12px;
+            padding: 10px;
         }
 
         .text-container {
@@ -219,17 +219,17 @@
                     <th style="border: 1px solid #444;">30</th>
                     <th style="border: 1px solid #444;">10</th>
                     <th style="border: 1px solid #444;">60</th>
-                    <th style="border: 1px solid #444;">100</th>
+                    <th style="border: 1px solid #444;">100%</th>
                     <th style="border: 1px solid #444;">30</th>
                     <th style="border: 1px solid #444;">10</th>
                     <th style="border: 1px solid #444;">60</th>
-                    <th style="border: 1px solid #444;">100</th>
+                    <th style="border: 1px solid #444;">100%</th>
                     <th style="border: 1px solid #444;">30</th>
                     <th style="border: 1px solid #444;">10</th>
                     <th style="border: 1px solid #444;">60</th>
-                    <th style="border: 1px solid #444;">100</th>
+                    <th style="border: 1px solid #444;">100%</th>
                     <th style="border: 1px solid #444;">300</th>
-                    <th style="border: 1px solid #444;">100.00</th>
+                    <th style="border: 1px solid #444;">100%</th>
                 </tr>
 
             </thead>
@@ -270,12 +270,12 @@
                 @endforeach
 
                 @php
-                    $getGrade = App\Models\MarksGrade::getGrade($overallAverage);
+$getGrade = App\Models\MarksGrade::getGrade($overallAverage);
                 @endphp
 
                 <tr>
                     <td class="td" colspan="3"><strong>GRAND TOTAL: {{ $grandTotal }}</strong></td>
-                    <td class="td" colspan="5"><strong>FINAL AVERAGE: {{ $overallAverage }}</strong></td>
+                    <td class="td" colspan="5"><strong>FINAL AVERAGE: {{ $overallAverage }}%</strong></td>
                     <td class="td" colspan="3"><strong>FINAL GRADE: {{ $getGrade }}</strong></td>
                     
                     @if ($generalRating > 50)
@@ -499,10 +499,9 @@
                                 CLASS TEACHER’S REMARK: {{ $value->class_tutor_comment }}
                                 <br>
                                 <br>
-                                CLASS TEACHER'S NAME: @if(!empty($getClassTeacher)){{ $getClassTeacher->teacher_name }}
-                                {{ $getClassTeacher->last_name }} {{ $getClassTeacher->other_name }}@endif <span
-                                    class="float-right"
-                                    style="margin-right: 10px;">{{ date('d-M-Y', strtotime($getExam->this_term_ends)) }}</span>
+                                @if(!empty($getClassTeacher))
+                                    Class Teacher's Name: {{ $getClassTeacher->teacher_name }} {{ $getClassTeacher->last_name }} {{ $getClassTeacher->other_name }} <span class="float-right" style="margin-right: 10px; margin-left: 30px;">{{ date('d-M-Y', strtotime($getExam->this_term_ends)) }}</span>
+                                @endif
                             </b>
                         </div>
 
@@ -516,7 +515,7 @@
                                 @if (!empty($getHeadTeacher))
                                     Head Teacher's Name: {{ $getHeadTeacher->name }} {{ $getHeadTeacher->last_name }}
                                     {{ $getHeadTeacher->other_name }} <span class="float-right"
-                                        style="margin-right: 10px;">{{ date('d-M-Y', strtotime($getExam->this_term_ends)) }}</span>
+                                        style="margin-right: 10px; margin-left: 30px;">{{ date('d-M-Y', strtotime($getExam->this_term_ends)) }}</span>
                                 @endif
                             </b>
                         </div>

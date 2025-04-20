@@ -995,6 +995,11 @@ Route::group(['middleware' => 'teacher'], function(){
 
 
 
+    ///CUMULATIVE RESULT PRINTING
+    Route::get('teacher/cumulative_exam_result/print', [ExaminationsController::class,'myCumulativeExamResultPrint'])->name('teacher.my_exam_result.cumulative.print');
+
+
+
 
 
 
@@ -1082,6 +1087,11 @@ Route::group(['middleware' => 'student'], function(){
     // Route::post('student/cbt/start/{examId}',[CBTController::class,'startExam'])->name('cbt.startExam');
     Route::post('student/cbt/save-response', [CBTController::class,'saveResponse'])->name('cbt.save_response');
     Route::post('student/cbt/submit', [CBTController::class, 'submitExam'])->name('cbt.submit_exam');
+
+
+
+    ///CUMULATIVE RESULT PRINT
+    Route::get('student/cumulative_exam_result/print', [ExaminationsController::class,'myCumulativeExamResultPrint'])->name('parent.my_exam_result.cumulative.print');
 
 
 
@@ -1208,6 +1218,11 @@ Route::group(['middleware' => 'parent'], function(){
 
 
 
+    ///CUMULATIVE RESULT PRINT
+    Route::get('parent/cumulative_exam_result/print', [ExaminationsController::class,'myCumulativeExamResultPrint'])->name('parent.my_exam_result.cumulative.print');
+
+
+    
 
 
 
