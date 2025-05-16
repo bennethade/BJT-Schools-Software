@@ -13,8 +13,12 @@ return new class extends Migration
     {
         Schema::create('cbt_attempts', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('class_id')->constrained('classes')->onDelete('cascade');
+            $table->foreignId('exam_id')->constrained('exams')->onDelete('cascade');
             $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('cbt_exam_id')->constrained('cbt_exams')->onDelete('cascade');
+            $table->dateTime('started_at')->nullable();
+            $table->integer('duration')->nullable();
             $table->integer('score')->nullable();
             $table->dateTime('completed_at')->nullable();
             $table->timestamps();

@@ -13,7 +13,7 @@
           <h1 style="color: brown">{{ $getClassName->name }} {{ $getClassName->description }} {{ $getTermName->name }} <span style="color: black">Mid Term Subject Goals</span> </h1>
         </div>
         <div class="col-sm-3" style="text-align: right;">
-          <button type="button" class="btn btn-warning" id="autoGenerateGoals">Auto Generate All Subjects</button>
+          <button type="button" class="btn btn-warning" id="autoGenerateGoals">Import Learning Objectives</button>
         </div>
 
         <div class="col-sm-3" style="text-align: right;">
@@ -170,7 +170,7 @@
                         <select class="form-control" name="previous_term_id" required>
                             <option value="">Select</option>
                             @foreach ($getExam as $exam)
-                                <option value="{{ $exam->id }}">{{ $exam->name }}</option>
+                                <option value="{{ $exam->id }}">{{ $exam->name }} {{ $exam->session }}</option>
                             @endforeach
                         </select>
                     </div>

@@ -16,6 +16,7 @@ return new class extends Migration
             // $table->foreignId('cbt_exam_id')->constrained('cbt_exams')->onDelete('cascade');
             $table->integer('cbt_exam_id');
             $table->text('question');
+            $table->string('image')->nullable();
             $table->string('option_a');
             $table->string('option_b');
             $table->string('option_c')->nullable();

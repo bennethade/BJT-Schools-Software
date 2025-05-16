@@ -98,7 +98,7 @@ class Exam extends Model
         return self::select('exams.*', 'exams.id as exam_id', 'exams.name as exam_name', 'exams.session as exam_session')
                     ->join('assign_class_teachers', 'assign_class_teachers.exam_id', '=', 'exams.id')
                     ->where('assign_class_teachers.teacher_id', '=', $teacher_id)
-                    ->orderBy('exams.id', 'asc')
+                    ->orderBy('exams.id', 'DESC')
                     ->distinct()
                     ->get();
     }
@@ -109,7 +109,7 @@ class Exam extends Model
         return self::select('exams.*', 'exams.id as exam_id', 'exams.name as exam_name', 'exams.session as exam_session')
                     ->join('assign_students', 'assign_students.exam_id', '=', 'exams.id')
                     ->where('assign_students.student_id', '=', $student_id)
-                    ->orderBy('exams.id', 'asc')
+                    ->orderBy('exams.id', 'DESC')
                     ->distinct()
                     ->get();
     }

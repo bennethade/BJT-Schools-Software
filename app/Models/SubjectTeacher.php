@@ -85,6 +85,42 @@ class SubjectTeacher extends Model
     }
 
 
+    public static function getAssignedTeacherSubjects($class_id, $exam_id, $teacher_id)
+    { ///THIS FUNCTION IS TO FETCH A TEACHER'S ASSIGNED SUBJECT FOR A CLASS AND TERM
+        return self::select(
+                    'subject_teachers.*',
+                    'subjects.name as subject_name',
+                    'subjects.id as subject_id'
+                )
+                    ->join('subjects', 'subjects.id', '=', 'subject_teachers.subject_id')
+                    ->where('class_id', $class_id)
+                    ->where('exam_id', $exam_id)
+                    ->where('teacher_id', $teacher_id)
+                    ->get();
+    }
+
+
+
+    public static function getTeacherSubjects($teacher_id)
+    {
+        ///THIS FUNCTION FETCHES ALL THE SUBJECTS ASSIGNED TO A TEACHER. LIKE THE ONE ABOVE
+
+        return self::select(
+                    'subjects.name as subject_name',
+                    'subjects.id as subject_id'
+                )
+                    ->join('subjects', 'subjects.id', '=', 'subject_teachers.subject_id')
+                    ->where('subject_teachers.teacher_id', $teacher_id)
+                    ->distinct()
+                    ->orderBy('subjects.name', 'asc')
+                    ->get();
+    }
+
+
+
+
+
+
 
     
 

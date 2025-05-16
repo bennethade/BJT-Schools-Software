@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('exam_title');
             $table->foreignId('class_id')->constrained('classes')->onDelete('cascade');
+            $table->foreignId('exam_id')->constrained('exams')->onDelete('cascade');
             $table->foreignId('subject_id')->constrained('subjects')->onDelete('cascade');
+            $table->integer('overall_score'); 
             $table->integer('duration'); // in minutes
             $table->dateTime('start_time')->nullable();
             $table->dateTime('end_time')->nullable();

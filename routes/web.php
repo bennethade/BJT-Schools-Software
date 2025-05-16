@@ -606,6 +606,12 @@ Route::group(['middleware' => 'admin'], function(){
 
     Route::delete('admin/cbt/assign/delete/{id}', [CBTController::class,'deleteAssignedCBT'])->name('cbt.assign.delete');
 
+    Route::get('admin/cbt_score/view', [CBTController::class,'cbtScoreView'])->name('cbt.score.view');
+    Route::get('admin/cbt_score/list/{class_id}/{exam_id}/{cbt_exam_id}', [CBTController::class,'cbtScoreList'])->name('cbt.score.list');
+
+    Route::delete('admin/student/cbt/reset/{class_id}/{exam_id}/{cbt_exam_id}/{student_id}', [CBTController::class,'singleStudentCBTReset'])->name('single.student.cbt.reset');
+    Route::delete('admin/student/cbt/resetAll/{class_id}/{exam_id}/{cbt_exam_id}', [CBTController::class,'studentCBTResetAll'])->name('single.student.cbt.resetAll');
+
 
 
 
@@ -1002,6 +1008,66 @@ Route::group(['middleware' => 'teacher'], function(){
 
 
 
+    //CBT ROUTES
+
+    /////Class Teacher
+    Route::get('teacher/cbt/class_teacher_cbt_questions', [CBTController::class,'teacherViewAll'])->name('teacher.cbt.view.all');
+    Route::post('teacher/cbt/class_teacher_cbt_questions', [CBTController::class,'CBTSubmit'])->name('teacher.cbt.submit');
+    Route::get('teacher/cbt/cbt_edit/{id}/{class_id}', [CBTController::class,'teacherEditCBT'])->name('teacher.cbt.edit');
+    Route::post('teacher/cbt/cbt_edit/{id}', [CBTController::class, 'updateCBT'])->name('teacher.cbt.update');
+    Route::delete('teacher/cbt/delete/{id}', [CBTController::class,'deleteCBT'])->name('teacher.cbt.delete');
+
+
+    Route::get('teacher/cbt/view_questions/{id}', [CBTController::class,'viewQuestions'])->name('teacher.cbt.view_questions');
+    Route::post('teacher/cbt/view_questions/{id}', [CBTController::class, 'storeQuestions'])->name('teacher.cbt.questions.store');
+
+    Route::get('teacher/cbt/assigned_class_cbt', [CBTController::class,'teacherAssignedCbtList'])->name('teacher.cbt.assigned.list');
+
+
+    Route::get('teacher/cbt/assign/{id}', [CBTController::class,'teacherAssignCBT'])->name('teacher.cbt.assign');
+    Route::post('teacher/cbt/assign/{cbt_exam_id}', [CBTController::class, 'storeAssignCBT'])->name('teacher.cbt.assign.store');
+
+    Route::get('teacher/cbt/assigned_list/edit/{id}', [CBTController::class, 'teacherEditAssignCBT'])->name('teacher.cbt.assigned_list.edit');
+    Route::put('teacher/cbt/assigned_list/update/{id}', [CBTController::class, 'updateAssignCBT'])->name('teacher.cbt.assigned_list.update');
+
+    Route::delete('teacher/cbt/assign/delete/{id}', [CBTController::class,'deleteAssignedCBT'])->name('teacher.cbt.assign.delete');
+
+    Route::get('teacher/cbt/class_cbt_scores', [CBTController::class,'teacherCbtScoreView'])->name('teacher.cbt.class_score.view');
+    Route::get('teacher/cbt/class_score/list/{class_id}/{exam_id}/{cbt_exam_id}', [CBTController::class,'teacherCbtScoreList'])->name('teacher.cbt.class_score.list');
+
+
+
+
+
+
+    //////Subject Teacher CBT
+    Route::get('teacher/cbt/subject_teacher_cbt_questions', [CBTController::class,'subjectTeacherViewAll'])->name('subject_teacher.cbt.view.all');
+    Route::get('teacher/cbt/subject_teacher_cbt_edit/{id}/{class_id}', [CBTController::class,'subjectTeacherEditCBT'])->name('subject_teacher.cbt.edit');
+    Route::post('teacher/cbt/subject_teacher_cbt_edit/{id}', [CBTController::class, 'subjectTeacherUpdateCBT'])->name('subject_teacher.cbt.update');
+
+
+    Route::get('teacher/cbt/assigned_subject_cbt', [CBTController::class,'subjectTeacherAssignedCbtList'])->name('subject_teacher.cbt.assigned.list');
+    Route::get('teacher/cbt/subject_cbt_assign/{id}', [CBTController::class,'subjectTeacherAssignCBT'])->name('subject_teacher.cbt.assign');
+    Route::post('teacher/cbt/subject_cbt_assign/{cbt_exam_id}', [CBTController::class, 'subjectTeacherStoreAssignCBT'])->name('subject_teacher.cbt.assign.store');
+
+    Route::get('teacher/cbt/assigned_subject_list/edit/{id}', [CBTController::class, 'subjectTeacherEditAssignCBT'])->name('subject_teacher.cbt.assigned_list.edit');
+    Route::put('teacher/cbt/assigned_list/update/{id}', [CBTController::class, 'subjectTeacherUpdateAssignCBT'])->name('subject_teacher.cbt.assigned_list.update');
+
+    Route::get('teacher/cbt/subject_cbt_scores', [CBTController::class,'subjectTeacherCbtScoreView'])->name('subject_teacher.cbt.class_score.view');
+    Route::get('teacher/cbt/subject_score/list/{class_id}/{exam_id}/{cbt_exam_id}', [CBTController::class,'teacherCbtScoreList'])->name('teacher.cbt.class_score.list');
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1082,11 +1148,24 @@ Route::group(['middleware' => 'student'], function(){
     Route::get('student/cbt/cbt_list', [CBTController::class,'studentCbtList'])->name('student.cbt.list');
     Route::get('student/cbt/take_cbt/{class_id}/{exam_id}/{subject_id}/{cbt_exam_id}', [CBTController::class,'studentTakeCBT'])->name('student.cbt.take_cbt');
     Route::get('student/cbt/take_cbt/{class_id}/{exam_id}/{subject_id}/{cbt_exam_id}/begin_test', [CBTController::class,'studentTakeCBTBegin'])->name('student.cbt.take_cbt.begin');
+    
+    // Handles saving responses via AJAX
+    Route::post('student/cbt/save_response', [CBTController::class, 'saveResponse'])->name('student.cbt.save_response');
+
+    // Handles final exam submission (calculates score, saves to attempt, returns JSON with attempt ID)
+    Route::post('student/cbt/submit', [CBTController::class, 'submitExam'])->name('student.cbt.submit_exam');
+
+    // New: Displays result page after submission
+    Route::get('student/cbt/result/{attempt}', [CBTController::class, 'viewResult'])->name('cbt.view_result');
+
+    Route::get('student/cbt_scores/list', [CBTController::class, 'studentCbtScores'])->name('student.cbt.scores');
+    
 
 
-    // Route::post('student/cbt/start/{examId}',[CBTController::class,'startExam'])->name('cbt.startExam');
-    Route::post('student/cbt/save-response', [CBTController::class,'saveResponse'])->name('cbt.save_response');
-    Route::post('student/cbt/submit', [CBTController::class, 'submitExam'])->name('cbt.submit_exam');
+
+
+
+
 
 
 
@@ -1220,6 +1299,15 @@ Route::group(['middleware' => 'parent'], function(){
 
     ///CUMULATIVE RESULT PRINT
     Route::get('parent/cumulative_exam_result/print', [ExaminationsController::class,'myCumulativeExamResultPrint'])->name('parent.my_exam_result.cumulative.print');
+
+
+
+
+    //CBT ROUTES
+    Route::get('parent/cbt_scores/list', [CBTController::class, 'parentStudentCbtList'])->name('parent.student.cbt.list');
+    Route::get('parent/cbt_scores/scores/{class_id}/{exam_id}/{student_id}', [CBTController::class, 'parentStudentCbtScores'])->name('parent.student.cbt.scores');
+
+
 
 
     

@@ -170,7 +170,7 @@
                         <select class="form-control" name="previous_term_id" required>
                             <option value="">Select</option>
                             @foreach ($getExam as $exam)
-                                <option value="{{ $exam->id }}">{{ $exam->name }}</option>
+                                <option value="{{ $exam->id }}">{{ $exam->name }} {{ $exam->session }}</option>
                             @endforeach
                         </select>
                     </div>

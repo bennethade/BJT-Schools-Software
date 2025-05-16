@@ -8,9 +8,12 @@ use App\Models\CbtExam;
 use App\Models\CbtQuestion;
 use App\Models\CbtResponse;
 use App\Models\ClassModel;
+use App\Models\ClassSubject;
 use App\Models\Exam;
 use App\Models\Subject;
+use App\Models\SubjectTeacher;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -29,12 +32,14 @@ class CBTController extends Controller
     public function viewAll()
     {
         $data['getClass'] = ClassModel::all();
+        $data['getExam'] = Exam::getExam();
         $data['getSubject'] = Subject::all();
 
-        $query = CbtExam::select('cbt_exams.*')
+        $query = CbtExam::select('cbt_exams.*', 'exams.name as term_name', 'exams.session as term_session')
             ->leftJoin('classes', 'classes.id', '=', 'cbt_exams.class_id')
+            ->leftJoin('exams', 'exams.id', '=', 'cbt_exams.exam_id')
             ->leftJoin('subjects', 'subjects.id', '=', 'cbt_exams.subject_id')
-            ->orderBy('cbt_exams.created_at', 'DESC');
+            ->orderBy('cbt_exams.exam_title', 'asc');
 
         // Apply search filters
         if (!empty(FacadesRequest::get('name'))) {
@@ -42,6 +47,7 @@ class CBTController extends Controller
                 $searchTerm = '%' . FacadesRequest::get('name') . '%';
                 $q->where('cbt_exams.exam_title', 'like', $searchTerm)
                     ->orWhere('classes.name', 'like', $searchTerm)
+                    ->orWhere('exams.name', 'like', $searchTerm)
                     ->orWhere('subjects.name', 'like', $searchTerm)
                     ->orWhere('subjects.description', 'like', $searchTerm);
             });
@@ -52,6 +58,7 @@ class CBTController extends Controller
         $data['header_title'] = 'All CBT';
         return view('admin.cbt.view_all', $data);
     }
+    
 
 
 
@@ -61,22 +68,25 @@ class CBTController extends Controller
     public function CBTSubmit(Request $request)
     {
         $request->validate([
-            'exam_title' => 'required',
-            'class_id' => 'required',
-            'subject_id' => 'required',
-            'duration' => 'required',
+            'exam_title'    => 'required',
+            'class_id'      => 'required',
+            'subject_id'    => 'required',
+            'overall_score' => 'required',
+            'duration'      => 'required',
             // 'status' => 'required|in:0,1',
         ]);
         
         $cbt = new CbtExam();
 
-        $cbt->exam_title = $request->exam_title;
-        $cbt->class_id = $request->class_id;
-        $cbt->subject_id = $request->subject_id;
-        $cbt->duration = $request->duration;
-        $cbt->status = $request->status;
-        $cbt->created_by = Auth::user()->id;
-        $cbt->updated_by = null;
+        $cbt->exam_title        = $request->exam_title;
+        $cbt->class_id          = $request->class_id;
+        $cbt->exam_id           = $request->exam_id;
+        $cbt->subject_id        = $request->subject_id;
+        $cbt->overall_score     = $request->overall_score;
+        $cbt->duration          = $request->duration;
+        $cbt->status            = $request->status;
+        $cbt->created_by        = Auth::user()->id;
+        $cbt->updated_by        = null;
 
         $cbt->save();
 
@@ -91,6 +101,7 @@ class CBTController extends Controller
     {
         $data['getRecord'] = CbtExam::findOrFail($id);
         $data['getClass'] = ClassModel::all();
+        $data['getExam'] = Exam::getExam();
         $data['getSubject'] = Subject::all();
 
         $data['header_title'] = "Edit CBT";
@@ -98,29 +109,42 @@ class CBTController extends Controller
     }
 
 
+
     public function updateCBT(Request $request, $id)
     {
         $request->validate([
-            'exam_title' => 'required',
-            'class_id' => 'required',
-            'subject_id' => 'required',
-            'duration' => 'required',
-            'status' => 'required'
+            'exam_title'    => 'required',
+            'class_id'      => 'required',
+            'exam_id'       => 'required',
+            'subject_id'    => 'required',
+            'overall_score' => 'required',
+            'duration'      => 'required',
+            'status'        => 'required'
         ]);
         
         $cbt = CbtExam::findOrFail($id);
 
         $cbt->exam_title = $request->exam_title;
         $cbt->class_id = $request->class_id;
+        $cbt->exam_id = $request->exam_id;
         $cbt->subject_id = $request->subject_id;
+        $cbt->overall_score = $request->overall_score;
         $cbt->duration = $request->duration;
         $cbt->status = $request->status;
         $cbt->updated_by = Auth::user()->id;
 
         $cbt->save();
 
-        return redirect()->route('cbt.view.all')->with('success', 'CBT Updated Successfully!');
+        if(Auth::user()->user_type == 1 || Auth::user()->user_type == 'Super Admin' || Auth::user()->user_type == 'School Admin')
+        {
+            return redirect()->route('cbt.view.all')->with('success', 'CBT Updated Successfully!');
+        }else{
+            return redirect()->route('teacher.cbt.view.all')->with('success', 'CBT Updated Successfully!');
+        }
+
     }
+
+    
 
 
 
@@ -192,6 +216,7 @@ class CBTController extends Controller
                 $imagePath = public_path('upload/question_images/' . $filename);
 
                 // Process the image using GD (resize image)
+                //MAKE SURE extension=gd IS ENABLED IN YOUR php.ini FILE
                 $image = imagecreatefromstring(file_get_contents($questionData['image']->getPathname()));
 
                 if ($image) {
@@ -232,7 +257,13 @@ class CBTController extends Controller
         $cbt = CbtExam::findOrFail($id);
         $cbt->delete();
 
-        return redirect()->route('cbt.view.all')->with('warning', 'CBT Deleted Successfully!');
+        if(Auth::user()->user_type == 1 || Auth::user()->user_type == 'Super Admin' || Auth::user()->user_type == 'School Admin')
+        {
+            return redirect()->route('cbt.view.all')->with('warning', 'CBT Deleted Successfully!');
+        }else{
+            return back()->with('success', 'CBT Deleted Successfully!');
+        }
+
     }
 
 
@@ -244,12 +275,14 @@ class CBTController extends Controller
         return view('admin.cbt.assigned_list', $data);
     }
 
+    
+
 
 
     public function assignCBT($id)
     {
         $data['getClass'] = ClassModel::all();
-        $data['getTerm'] = Exam::all();
+        $data['getTerm'] = Exam::getExam();
 
         $data['getRecord'] = CbtExam::findOrFail($id);
 
@@ -285,13 +318,20 @@ class CBTController extends Controller
                 }
             }
 
-            return redirect()->route('cbt.assigned.list')->with('success', 'CBT Successfully Assigned to Class(es)');
+            if(Auth::user()->user_type == 1 || Auth::user()->user_type == 'Super Admin' || Auth::user()->user_type == 'School Admin')
+            {
+                return redirect()->route('cbt.assigned.list')->with('success', 'CBT Successfully Assigned to Class(es)');
+            }else{
+                return redirect()->route('teacher.cbt.assigned.list')->with('success', 'CBT Successfully Assigned to Class(es)');
+            }
+
         } 
         else 
         {
             return redirect()->back()->with('error', 'Error! </br> Please Try Again with the right details');
         }
     }
+    
 
 
   
@@ -329,9 +369,18 @@ class CBTController extends Controller
         $data->status = $request->status;
         $data->save();
 
-        return redirect()->route('cbt.assigned.list')->with('success', 'CBT Assignment Updated Successfully');
+
+        if(Auth::user()->user_type == 1 || Auth::user()->user_type == 'Super Admin' || Auth::user()->user_type == 'School Admin')
+        {
+            return redirect()->route('cbt.assigned.list')->with('success', 'CBT Assignment Updated Successfully');
+        }else{
+            return redirect()->route('teacher.cbt.assigned.list')->with('success', 'CBT Assignment Updated Successfully');
+        }
+
     }
 
+
+    
 
 
     public function deleteAssignedCBT($id)
@@ -339,8 +388,83 @@ class CBTController extends Controller
         $data = CbtAssign::findOrFail($id);
         $data->delete();
 
-        return redirect()->back()->with('warning', 'Assigned CBT Has Been Deleted Successfully!');
+        return redirect()->back()->with('warning', 'CBT has been unassigned Successfully!');
     }
+
+
+
+    public function cbtScoreView(Request $request)
+    {
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+
+        $data['getAllWrittenCBT'] = CbtAssign::getAllWrittenCBT($request->class_id, $request->exam_id);
+   
+        $data['header_title'] = "CBT Scores";
+        return view('admin.cbt.score_view', $data);
+    }
+
+
+
+    public function cbtScoreList(Request $request)
+    {
+        $data['getCbtDetails'] = CbtAttempt::getCbtDetails($request->class_id, $request->exam_id, $request->cbt_exam_id);
+
+        $data['getSingleCBTScores'] = CbtAttempt::getSingleCBTScores($request->class_id, $request->exam_id, $request->cbt_exam_id);
+   
+        $data['header_title'] = "CBT Scores";
+        return view('admin.cbt.score_list', $data);
+    }
+
+
+
+    public function singleStudentCBTReset($class_id, $exam_id, $cbt_exam_id, $student_id)
+    {
+        // dd($class_id, $exam_id, $cbt_exam_id, $student_id);
+
+        $attempt_id = CbtAttempt::where('class_id', $class_id)
+                                ->where('exam_id', $exam_id)
+                                ->where('cbt_exam_id', $cbt_exam_id)
+                                ->where('student_id', $student_id)
+                                ->value('id');
+
+        // dd($attempt_id);
+
+        if ($attempt_id) {
+            CbtAttempt::findOrFail($attempt_id)->delete();
+
+            CbtResponse::where('student_id', $student_id)
+                    ->where('attempt_id', $attempt_id)
+                    ->delete();
+
+            return redirect()->back()->with('success', 'Student CBT Successfully Reset!');
+        }
+
+        return redirect()->back()->with('error', 'No CBT score found for this student.');
+    }
+
+
+
+    public function studentCBTResetAll($class_id, $exam_id, $cbt_exam_id)
+    {
+        $attempt_ids = CbtAttempt::where('class_id', $class_id)
+                                ->where('exam_id', $exam_id)
+                                ->where('cbt_exam_id', $cbt_exam_id)
+                                ->pluck('id');
+
+        if ($attempt_ids->isEmpty()) {
+            return redirect()->back()->with('error', 'No CBT score found for this exam.');
+        }
+
+        foreach ($attempt_ids as $attempt_id) {
+            CbtAttempt::findOrFail($attempt_id)->delete();
+
+            CbtResponse::where('attempt_id', $attempt_id)->delete();
+        }
+
+        return redirect()->back()->with('success', 'All CBT Scores for this Exam Successfully Reset!');
+    }
+
 
 
 
@@ -351,14 +475,36 @@ class CBTController extends Controller
 
     public function studentCbtList(Request $request)
     {
-        $data['getClass'] = ClassModel::getStudentClassList(Auth::user()->id);
-        $data['getExam'] = Exam::getStudentTermList(Auth::user()->id);
+        $student_id = Auth::user()->id;
+
+        $data['getClass'] = ClassModel::getStudentClassList($student_id);
+        $data['getExam'] = Exam::getStudentTermList($student_id);
 
         $data['getCBT'] = CbtAssign::getStudentCBT($request->class_id, $request->exam_id);
 
+        // We'll store all CBT attempts the student has already taken
+        $alreadyTakenMap = [];
+
+        foreach ($data['getCBT'] as $cbt) {
+            $attempt = CbtAttempt::alreadyTaken(
+                $request->class_id,
+                $request->exam_id,
+                $student_id,
+                $cbt->cbt_exam_id
+            );
+
+            if ($attempt) {
+                $alreadyTakenMap[$cbt->cbt_exam_id] = $attempt;
+            }
+        }
+
+        $data['alreadyTakenMap'] = $alreadyTakenMap;
+
         $data['header_title'] = "CBT List";
+
         return view('student.cbt.cbt_list', $data);
     }
+
 
 
 
@@ -379,80 +525,475 @@ class CBTController extends Controller
     }
 
 
+
     public function studentTakeCBTBegin(Request $request)
     {
+        $student = Auth::user();
 
-        $data['getStudent'] = Auth::user(); // Assuming the student is logged in
+        $data['getStudent'] = $student;
         $data['cbtExam'] = CbtExam::findOrFail($request->cbt_exam_id);
         $data['questions'] = CbtQuestion::where('cbt_exam_id', $request->cbt_exam_id)->get();
 
+        $data['cbtAttempt'] = CbtAttempt::firstOrCreate([
+            'student_id' => $student->id,
+            'cbt_exam_id' => $request->cbt_exam_id,
+            'class_id' => $request->class_id,
+            'exam_id' => $request->exam_id,
+        ], [
+            'started_at' => Carbon::now(),
+            'duration' => $data['cbtExam']->duration, // exam has a duration in minutes
+        ]);
 
 
-        $data['getStudent'] = User::where('id', Auth::user()->id)->first();
-        
+        // 👇 Get the student’s previous answers for this attempt
+        $data['responses'] = CbtResponse::where('attempt_id', $data['cbtAttempt']->id)
+            ->pluck('selected_option', 'question_id');
+
         $data['header_title'] = "Begin CBT";
+
         return view('student.cbt.cbt_begin', $data);
     }
 
 
 
 
-
-    
-    //EXAM HAS STARTED
     public function saveResponse(Request $request)
     {
-        try {
-            $request->validate([
-                'question_id' => 'required|integer|exists:cbt_questions,id',
-                'selected_option' => 'required|string',
-            ]);
+        // $data = $request->json()->all();
 
-            $questionId = $request->question_id;
-            $selectedOption = $request->selected_option;
-            $studentId = Auth::id();
+        $request->validate([
+            'attempt_id' => 'required|exists:cbt_attempts,id',
+            'student_id' => 'required|exists:users,id',
+            'question_id' => 'required|exists:cbt_questions,id',
+            'selected_option' => 'required|in:A,B,C,D,E',
+        ]);
 
-            $question = CbtQuestion::findOrFail($questionId);
-            $isCorrect = ($selectedOption === $question->correct_option) ? 1 : 0;
+        $question = CbtQuestion::find($request->question_id);
+        $isCorrect = strtoupper($question->correct_option) === strtoupper($request->selected_option);
 
-            CbtResponse::updateOrCreate(
-                ['student_id' => $studentId, 'question_id' => $questionId],
-                ['selected_option' => $selectedOption, 'is_correct' => $isCorrect]
-            );
+        CbtResponse::updateOrCreate(
+            [
+                'attempt_id' => $request->attempt_id,
+                'student_id' => $request->student_id,
+                'question_id' => $request->question_id,
+            ],
+            [
+                'selected_option' => $request->selected_option,
+                'is_correct' => $isCorrect,
+            ]
+        );
 
-            return response()->json(['message' => 'Response saved successfully'], 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        return response()->json(['message' => 'Response saved successfully.']);
     }
+
+
 
 
     public function submitExam(Request $request)
     {
-        try {
-            $request->validate(['cbt_exam_id' => 'required|integer|exists:cbt_exams,id']);
+        $attempt = CbtAttempt::findOrFail($request->attempt_id);
 
-            $studentId = Auth::id();
-            $examId = $request->cbt_exam_id;
+        // Get total questions in this exam
+        $totalQuestions = CbtQuestion::where('cbt_exam_id', $attempt->cbt_exam_id)->count();
 
-            $totalCorrect = CbtResponse::where('student_id', $studentId)
-                ->whereHas('question', function ($query) use ($examId) {
-                    $query->where('cbt_exam_id', $examId);
-                })
-                ->where('is_correct', 1)
-                ->count();
+        // Count how many correct responses the student has
+        $correctAnswers = CbtResponse::where('attempt_id', $attempt->id)
+            ->where('is_correct', true)
+            ->count();
 
-            CbtAttempt::updateOrCreate(
-                ['student_id' => $studentId, 'cbt_exam_id' => $examId],
-                ['score' => $totalCorrect]
-            );
 
-            return response()->json(['message' => 'Exam submitted successfully', 'total_correct' => $totalCorrect], 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+        //Fetch the overall maximum score from cbt_exams table
+        $maxScore = CbtExam::where('id', $attempt->cbt_exam_id)->value('overall_score');
+
+        
+
+        // $scoreOver100 = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * 100, 2) : 0;
+        $scoreOver100 = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * $maxScore, 2) : 0;
+
+        // Save score to attempt
+        $attempt->update([
+            'score' => $scoreOver100,
+            'completed_at' => Carbon::now()
+        ]);
+
+        return response()->json([
+            'message' => 'Exam submitted successfully.',
+            'total_correct' => $correctAnswers,
+            'total_questions' => $totalQuestions,
+            'total_fails' => $totalQuestions - $correctAnswers,
+            'attempt_id' => $attempt->id,
+            'score_over_100' => $scoreOver100
+        ]);
+    }
+
+
+
+
+    public function viewResult($attemptId)
+    {
+        $attempt = CbtAttempt::findOrFail($attemptId);
+
+        $totalQuestions = CbtQuestion::where('cbt_exam_id', $attempt->cbt_exam_id)->count();
+
+        $correctAnswers = round(($attempt->score * $totalQuestions) / 100); // Reverse calculation for display
+
+        $fails = $totalQuestions - $correctAnswers;
+
+        $totalAnsweredQuestion = CbtResponse::where('attempt_id', $attemptId)->where('student_id', Auth::user()->id)->count();
+
+        $unansweredQuestion = $totalQuestions - $totalAnsweredQuestion;
+
+
+        return view('student.cbt.result', [
+            'attempt' => $attempt,
+            'totalQuestions' => $totalQuestions,
+            'correctAnswers' => $correctAnswers,
+            'fails' => $fails,
+            'scoreOver100' => $attempt->score,
+            'unansweredQuestion' => $unansweredQuestion
+        ]);
+    
+    }
+
+
+
+    public function studentCbtScores(Request $request)
+    {
+        $student_id = Auth::user()->id;
+
+        $data['getClass'] = ClassModel::getStudentClassList($student_id);
+        $data['getExam'] = Exam::getStudentTermList($student_id);
+
+        $data['getStudentCBTScores'] = CbtAttempt::getStudentCBT($request->class_id, $request->exam_id, $student_id);
+
+
+        $data['header_title'] = "CBT Scores";
+        return view('student.cbt.cbt_scores', $data);
+    }
+
+
+
+
+
+
+    //PARENT DASHBOARD
+    public function parentStudentCbtList(Request $request)
+    {
+        $class_id = $request->class_id;
+        $exam_id = $request->exam_id;
+
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+
+        // $data['getParentStudentCBTScores'] = CbtAttempt::getStudentCBT($request->class_id, $request->exam_id, $student_id);
+
+        $data['getStudent'] = User::getParentStudents($class_id, $exam_id, Auth::user()->id);
+
+
+        $data['header_title'] = "CBT Scores";
+        return view('parent.cbt.cbt_list', $data);
+    }
+
+
+    public function parentStudentCbtScores(Request $request)
+    {
+        $class_id       = $request->class_id;
+        $exam_id        = $request->exam_id;
+        $student_id     = $request->student_id;
+
+        $data['getStudentCBT'] = CbtAttempt::getStudentCBT($class_id, $exam_id, $student_id);
+
+        $data['getStudent'] = User::where('id', $student_id)->first();
+
+
+        $data['header_title'] = "CBT Scores";
+
+        return view('parent.cbt.cbt_scores', $data);
+    }
+
+
+
+
+
+    ///TEACHER'S DASHBOARD
+
+    public function teacherViewAll(Request $request)
+    {
+        $data['getClass'] = ClassModel::getMyClassList(Auth::id());
+        $data['getExam'] = Exam::getMyTermList(Auth::id());
+        $data['getSubject'] = ClassSubject::getAssignedClassSubject($request->class_id);
+
+
+
+        $data['getRecord'] = CbtExam::getClassCbt($request->class_id, $request->exam_id);
+
+
+        $data['header_title'] = 'All CBT';
+        return view('teacher.cbt.view_all', $data);
+    }
+
+
+
+
+    public function teacherEditCBT($id, $class_id)
+    {
+        $data['getRecord'] = CbtExam::findOrFail($id);
+        $data['getClass'] = ClassModel::getMyClassList(Auth::id());
+        $data['getExam'] = Exam::getMyTermList(Auth::id());
+        $data['getSubject'] = ClassSubject::getAssignedClassSubject($class_id);
+
+        $data['header_title'] = "Edit CBT";
+        return view('teacher.cbt.edit', $data);
+    }
+    
+
+
+
+    public function teacherAssignedCbtList(Request $request)
+    {
+        $data['getClass'] = ClassModel::getMyClassList(Auth::id());
+        $data['getExam'] = Exam::getMyTermList(Auth::id());
+
+        $data['getRecord'] = CbtAssign::getClassAssignedCBTList($request->class_id, $request->exam_id);
+
+        // $data['getRecord'] = CbtAssign::where('class_id', $request->class_id)->where('exam_id', $request->exam_id)->paginate(50);
+
+        
+        $data['header_title'] = "Assigned CBT";
+        return view('teacher.cbt.assigned_list', $data);
+    }
+
+
+
+
+    public function teacherAssignCBT($id)
+    {
+        $data['getClass'] = ClassModel::getMyClassList(Auth::id());
+        $data['getExam'] = Exam::getMyTermList(Auth::id());
+
+        $data['getRecord'] = CbtExam::findOrFail($id);
+
+        $data['header_title'] = 'Assign CBT';
+        return view('teacher.cbt.assign', $data);
+    }
+    
+
+
+    public function teacherEditAssignCBT($id)
+    {
+        $data['getClass'] = ClassModel::getMyClassList(Auth::id());
+        $data['getExam'] = Exam::getMyTermList(Auth::id());
+        
+        $data['getRecord'] = CbtAssign::findOrFail($id); // Fetch the specific assignment
+        $data['getCbtExam'] = CbtExam::findOrFail($data['getRecord']->cbt_exam_id); // Fetch the CBT Exam details
+
+        $data['header_title'] = 'Edit CBT Assignment';
+        return view('teacher.cbt.edit_assigned', $data);
+    }
+
+
+
+    public function teacherCbtScoreView(Request $request)
+    {
+        $data['getClass'] = ClassModel::getMyClassList(Auth::id());
+        $data['getExam'] = Exam::getMyTermList(Auth::id());
+
+        $data['getAllWrittenCBT'] = CbtAssign::getAllWrittenCBT($request->class_id, $request->exam_id);
+   
+        $data['header_title'] = "CBT Scores";
+        return view('teacher.cbt.score_view', $data);
+    }
+
+
+
+
+    public function teacherCbtScoreList(Request $request)
+    {
+        $data['getCbtDetails'] = CbtAttempt::getCbtDetails($request->class_id, $request->exam_id, $request->cbt_exam_id);
+
+        $data['getSingleCBTScores'] = CbtAttempt::getSingleCBTScores($request->class_id, $request->exam_id, $request->cbt_exam_id);
+   
+        $data['header_title'] = "CBT Scores";
+        return view('teacher.cbt.score_list', $data);
+    }
+
+
+
+
+    ////SUBJECT TEACHER
+    public function subjectTeacherViewAll(Request $request)
+    {
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+        $data['getSubject'] = SubjectTeacher::getTeacherSubjects(Auth::id());
+
+        $data['getRecord'] = CbtExam::getSubjectTeacherCbt($request->class_id, $request->exam_id, Auth::id());
+
+        $data['header_title'] = 'All CBT';
+        return view('teacher.subject_teacher.cbt.view_all', $data);
+    }
+
+
+    public function subjectTeacherEditCBT($id, $class_id)
+    {
+        $data['getRecord'] = CbtExam::findOrFail($id);
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+        $data['getSubject'] = SubjectTeacher::getTeacherSubjects(Auth::id());
+
+        $data['header_title'] = "Edit CBT";
+        return view('teacher.subject_teacher.cbt.edit', $data);
+    }
+
+
+
+    public function subjectTeacherUpdateCBT(Request $request, $id)
+    {
+        $request->validate([
+            'exam_title'    => 'required',
+            'class_id'      => 'required',
+            'exam_id'       => 'required',
+            'subject_id'    => 'required',
+            'overall_score' => 'required',
+            'duration'      => 'required',
+            'status'        => 'required'
+        ]);
+        
+        $cbt = CbtExam::findOrFail($id);
+
+        $cbt->exam_title = $request->exam_title;
+        $cbt->class_id = $request->class_id;
+        $cbt->exam_id = $request->exam_id;
+        $cbt->subject_id = $request->subject_id;
+        $cbt->overall_score = $request->overall_score;
+        $cbt->duration = $request->duration;
+        $cbt->status = $request->status;
+        $cbt->updated_by = Auth::user()->id;
+
+        $cbt->save();
+        
+        return redirect()->route('subject_teacher.cbt.view.all')->with('success', 'CBT Updated Successfully!');
+
+    }
+
+
+
+    public function subjectTeacherAssignedCbtList(Request $request)
+    {
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+
+        $data['getRecord'] = CbtAssign::getSubjectTeacherCBTList($request->class_id, $request->exam_id, Auth::id());
+
+        // $data['getRecord'] = CbtAssign::where('class_id', $request->class_id)->where('exam_id', $request->exam_id)->paginate(50);
+
+        
+        $data['header_title'] = "Assigned CBT";
+        return view('teacher.subject_teacher.cbt.assigned_list', $data);
+    }
+
+
+
+
+    public function subjectTeacherAssignCBT($id)
+    {
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+
+        $data['getRecord'] = CbtExam::findOrFail($id);
+
+        $data['header_title'] = 'Assign CBT';
+        return view('teacher.subject_teacher.cbt.assign', $data);
+    }
+
+
+
+
+    public function subjectTeacherStoreAssignCBT(Request $request, $cbt_exam_id)
+    {
+
+        if (!empty($request->class_id)) 
+        {
+            foreach ($request->class_id as $class_id) 
+            {
+                $alreadyExistingData = CbtAssign::alreadyExistingData($cbt_exam_id, $request->exam_id, $class_id);
+
+                if (!empty($alreadyExistingData)) 
+                {
+                    $alreadyExistingData->status = $request->status;
+                    $alreadyExistingData->save();
+                } 
+                else {
+                    $data = new CbtAssign();
+                    $data->cbt_exam_id = $cbt_exam_id;
+                    $data->exam_id = $request->exam_id;
+                    $data->class_id = $class_id;
+                    $data->status = $request->status;
+                    $data->created_by = Auth::user()->id;
+                    $data->save();
+                }
+            }
+            
+            return redirect()->route('subject_teacher.cbt.assigned.list')->with('success', 'CBT Successfully Assigned to Class(es)');
+
+        } 
+        else 
+        {
+            return redirect()->back()->with('error', 'Error! </br> Please Try Again with the right details');
         }
     }
 
+
+
+    public function subjectTeacherEditAssignCBT($id)
+    {
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+        
+        $data['getRecord'] = CbtAssign::findOrFail($id); // Fetch the specific assignment
+        $data['getCbtExam'] = CbtExam::findOrFail($data['getRecord']->cbt_exam_id); // Fetch the CBT Exam details
+
+        $data['header_title'] = 'Edit CBT Assignment';
+        return view('teacher.subject_teacher.cbt.edit_assigned', $data);
+    }
+
+
+
+    public function subjectTeacherUpdateAssignCBT(Request $request, $id)
+    {
+        $data = CbtAssign::findOrFail($id);
+
+        $existingAssignment = CbtAssign::where('cbt_exam_id', $data->cbt_exam_id)
+            ->where('class_id', $request->class_id)
+            ->where('exam_id', $request->exam_id)
+            ->where('id', '!=', $id) // Exclude the current record
+            ->first();
+
+        if ($existingAssignment) {
+            return redirect()->back()->with('warning', 'This CBT has already been assigned to the selected class and term.');
+        }
+
+        // Update the record
+        $data->exam_id = $request->exam_id;
+        $data->class_id = $request->class_id;
+        $data->status = $request->status;
+        $data->save();
+
+        return redirect()->route('subject_teacher.cbt.assigned.list')->with('success', 'CBT Assignment Updated Successfully');
+
+    }
+
+
+    public function subjectTeacherCbtScoreView(Request $request)
+    {
+        $data['getClass'] = ClassModel::getClass();
+        $data['getExam'] = Exam::getExam();
+
+        $data['getAllWrittenCBT'] = CbtAssign::getTeacherAllWrittenCBT($request->class_id, $request->exam_id, Auth::id());
+   
+        $data['header_title'] = "CBT Scores";
+        return view('teacher.subject_teacher.cbt.score_view', $data);
+    }
 
 
 

@@ -81,6 +81,22 @@ class Subject extends Model
 
 
 
+    public static function getAssignedTeacherSubjects($class_id, $exam_id, $teacher_id)
+    {
+        return self::select(
+                    'subjects.*',
+                    'subjects.name as subject_name',
+                    'subjects.id as subject_id'
+                )
+                    ->join('subject_teachers', 'subject_teachers.subject_id', '=', 'subjects.id')
+                    ->where('subject_teachers.class_id', $class_id)
+                    ->where('subject_teachers.exam_id', $exam_id)
+                    ->where('subject_teachers.teacher_id', $teacher_id)
+                    ->get();
+    }
+
+
+
 
 
     

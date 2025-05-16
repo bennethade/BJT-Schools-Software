@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('cbt_responses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('attempt_id')->constrained('cbt_attempts')->onDelete('cascade');
+            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('question_id')->constrained('cbt_questions')->onDelete('cascade');
             $table->enum('selected_option', ['A', 'B', 'C', 'D', 'E']);
             $table->boolean('is_correct');
